@@ -5,7 +5,7 @@ use App::RabbitTail::FileTailer;
 use AnyEvent;
 use Data::Dumper;
 use Moose::Autobox;
-use MooseX::Types::Moose qw/ArrayRef Str/;
+use MooseX::Types::Moose qw/ArrayRef Str Int/;
 use namespace::autoclean;
 
 our $VERSION = '0.000_01';
