@@ -4,7 +4,8 @@ use RabbitFoot;
 use App::RabbitTail::FileTailer;
 use AnyEvent;
 use Data::Dumper;
-use MooseX::Types::Moose qw/Str/;
+use Moose::Autobox;
+use MooseX::Types::Moose qw/ArrayRef Str/;
 use namespace::autoclean;
 
 our $VERSION = '0.000_01';
@@ -13,9 +14,26 @@ $VERSION = eval $VERSION;
 with 'MooseX::Getopt';
 
 has filename => (
-    isa => Str,
+    isa => ArrayRef[Str],
     is => 'ro',
+    cmd_aliases => ['fn'],
     required => 1,
+    traits => ['Getopt'],
+);
+
+has routing_key => (
+    isa => ArrayRef[Str],
+    is => 'ro',
+    cmd_aliases => ['rk'],
+    default => sub { [ '#' ] },
+    traits => ['Getopt'],
+);
+
+has max_sleep => (
+    isa => Int,
+    is => 'ro',
+    default => 10,
+    documentation => 'The max sleep time between trying to read a line from an input file',
 );
 
 has _rf => (
@@ -44,11 +62,10 @@ my %defaults = (
     exchange_type => 'direct',
     exchange_name => 'logs',
     exchange_durable => 0,
-    routing_key => '#',
 );
 
 foreach my $k (keys %defaults) {
-    has $k => ( is => 'ro', default => $defaults{$k} );
+    has $k => ( is => 'ro', isa => Str, default => $defaults{$k} );
 }
 
 has _ch => (
@@ -60,37 +77,41 @@ has _ch => (
 sub _build_ch {
     my ($self) = @_;
     my $ch = $self->_rf->open_channel;
-    warn("Channel open");
-  #  my $exch_frame = $ch->declare_exchange(
-  #      type => $self->exchange_type,
-  #      durable => $self->exchange_durable,
-  #      exchange => $self->exchange_name,
-  #  )->method_frame;
-    warn("Got exchange");
-   # die Dumper($exch_frame) unless blessed $exch_frame and $exch_frame->isa('Net::AMQP::Protocol::Exchange::DeclareOk');
+    my $exch_frame = $ch->declare_exchange(
+        type => $self->exchange_type,
+        durable => $self->exchange_durable,
+        exchange => $self->exchange_name,
+    )->method_frame;
+    die Dumper($exch_frame) unless blessed $exch_frame
+        and $exch_frame->isa('Net::AMQP::Protocol::Exchange::DeclareOk');
     return $ch;
 }
 
 sub run {
     my $self = shift;
-    warn("QUACH");
-    $self->_ch;
-    warn("SETUP");
-    my $ft = $self->setup_tail($self->filename, $self->_ch);
-    $ft->tail;
+    my $rkeys = $self->routing_key;
+    foreach my $fn ($self->filename->flatten) {
+        my $rk = $rkeys->shift;
+        $rkeys->unshift($rk) unless $rkeys->length;
+        warn("Setup tail for $fn on $rk");
+        my $ft = $self->setup_tail($fn, $rk, $self->_ch);
+        $ft->tail;
+    }
     AnyEvent->condvar->recv;
 }
 
 sub setup_tail {
-    my ($self, $file, $ch) = @_;
+    my ($self, $file, $routing_key, $ch) = @_;
     App::RabbitTail::FileTailer->new(
+        max_sleep => $self->max_sleep,
         cb => sub {
             my $message = shift;
-            warn("SENT $message");
+            chomp($message);
+#            warn("SENT $message to " . $self->exchange_name . " with " . $routing_key);
             $ch->publish(
                 body => $message,
                 exchange => $self->exchange_name,
-                routing_key => $self->routing_key,
+                routing_key => $routing_key,
             );
         },
         fn => $file,

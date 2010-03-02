@@ -91,9 +91,10 @@ sub _read_one_line {
     my $self = shift;
     my $line = unblock($self->fh)->readline;
     return if !defined $line;
+    chomp($line);
     $self->_sleep_interval(0);
     $self->_clear_next_backoff;
-    $self->cb->($line);
+    $self->cb->($line) if length $line;
     return $line;
 }
 
