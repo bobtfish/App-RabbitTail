@@ -16,7 +16,11 @@ has fn => (
 has fh => (
     is => 'ro',
     lazy => 1,
-    default => sub { shift->fn->openr },
+    default => sub {
+        my $fh = shift->fn->openr;
+        seek $fh, 0, 2;
+        $fh;
+    },
 );
 
 has cb => (
@@ -29,6 +33,7 @@ has _sleep_interval => (
     isa => Num,
     is => 'rw',
     default => 0,
+    init_arg => undef,
 );
 
 has _next_backoff => (
@@ -36,6 +41,7 @@ has _next_backoff => (
     is => 'rw',
     clearer => '_clear_next_backoff',
     predicate => '_has_next_backoff',
+    init_arg => undef,
 );
 
 has backoff_increment => (
@@ -56,13 +62,6 @@ has _watcher => (
 
 sub tail {
     my ($self) = @_;
-
-    while ($self->_read_one_line) {}
-    $self->_sleep_till_lines
-}
-
-sub _sleep_till_lines {
-    my ($self) = @_;
     $self->_watcher(AnyEvent->timer(
         after => $self->_sleep_interval,
         cb => sub {
@@ -78,7 +77,7 @@ sub _sleep_till_lines {
                 elsif ($self->_sleep_interval < $self->max_sleep) {
                     $self->_next_backoff( $self->_next_backoff * 2 );
                 }
-                $self->_sleep_till_lines;
+                $self->_tail;
             }
             else {
                 $self->tail;
