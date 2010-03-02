@@ -93,7 +93,7 @@ sub run {
     foreach my $fn ($self->filename->flatten) {
         my $rk = $rkeys->shift;
         $rkeys->unshift($rk) unless $rkeys->length;
-        warn("Setup tail for $fn on $rk");
+       # warn("Setup tail for $fn on $rk");
         my $ft = $self->setup_tail($fn, $rk, $self->_ch);
         $ft->tail;
     }
