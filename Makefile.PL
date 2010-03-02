@@ -14,5 +14,7 @@ requires 'AnyEvent';
 requires 'MooseX::Types::Path::Class';
 requires 'MooseX::Types';
 
+test_requires 'Test::More' => '0.88';
+
 WriteAll;
 
