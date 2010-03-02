@@ -77,11 +77,8 @@ sub tail {
                 elsif ($self->_sleep_interval < $self->max_sleep) {
                     $self->_next_backoff( $self->_next_backoff * 2 );
                 }
-                $self->_tail;
             }
-            else {
-                $self->tail;
-            }
+            $self->tail;
         },
     ));
 }
