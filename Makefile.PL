@@ -16,5 +16,10 @@ requires 'MooseX::Types';
 
 test_requires 'Test::More' => '0.88';
 
+if ($Module::Install::AUTHOR) {
+    system("pod2text lib/App/RabbitTail.pm > README")
+        and die $!;
+}
+
 WriteAll;
 
