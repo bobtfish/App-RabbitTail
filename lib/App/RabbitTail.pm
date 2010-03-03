@@ -89,6 +89,12 @@ sub _build_ch {
 
 sub run {
     my $self = shift;
+    $self->tail->recv;
+}
+
+sub tail {
+    my $self = shift;
+    my $cv = AnyEvent->condvar;
     my $rkeys = $self->routing_key;
     foreach my $fn ($self->filename->flatten) {
         my $rk = $rkeys->shift;
@@ -97,7 +103,6 @@ sub run {
         my $ft = $self->setup_tail($fn, $rk, $self->_ch);
         $ft->tail;
     }
-    AnyEvent->condvar->recv;
 }
 
 sub setup_tail {
@@ -123,7 +128,60 @@ __END__
 
 =head1 NAME
 
-App::RabbitTail
+App::RabbitTail - Log tailer which broadcasts log lines into RabbitMQ exchanges.
+
+=head1 SYNOPSIS
+
+    See the rabbit_tail script shipped with the distribution for simple CLI useage.
+
+    use App::RabbitTail;
+    use AnyEvent; # Not strictly needed, but you probably want to
+                  # use it yourself if you're doing this manually.
+
+    my $tailer = App::RabbitTail->new(
+        # At least 1 filename must be supplied
+        filename => [qw/ file1 file2 /],
+        # Optional args, defaults below
+        routing_key => [qw/ # /],
+        host => 'localhost',
+        port => 5672,
+        user => 'guest',
+        pass => 'guest',
+        vhost => '/',
+        exchange_type => 'direct',
+        exchange_name => 'logs',
+        exchange_durable => 0,
+        max_sleep => 10,
+    );
+    # You can setup other AnyEvent io watchers etc here.
+    $tailer->run; # enters the event loop
+    # Or:
+    my $condvar = $tailer->tail;
+
+=head1 DECRIPTION
+
+App::RabbitTail is a trivial file tail implementation using L<AnyEvent> IO watchers,
+which emits lines from the tailed files into L<http://www.rabbitmq.com/>
+via the L<RabbitFoot> client.
+
+Note that this software should be considered experimental.
+
+=head1 BUGS
+
+Plenty. Along with error conditions not being handled gracefully etc.
+
+They will be fixed in due course as I start using this more seriously,
+however in the meantime, patches are welcome :)
+
+=head1 AUTHOR
+
+Tomas Doran (t0m) C<< <bobtfish@bobtfish.net> >>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2010 Tomas Doran
+
+Licensed under the same terms as perl itself.
 
 =cut
 
