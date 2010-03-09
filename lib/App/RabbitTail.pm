@@ -45,9 +45,14 @@ has _rf => (
 
 sub _build_rf {
     my ($self) = @_;
-    RabbitFoot->new()->load_xml_spec(
+    RabbitFoot->new(
+        varbose => 1,
+    )->load_xml_spec(
         RabbitFoot::default_amqp_spec(),
     )->connect(
+        an_failure => sub { warn("BLARGH") },
+        on_close => sub { warn("CLOSED") },
+        on_read_failure => sub { warn("READ FAILED") },
         map { $_ => $self->$_ }
         qw/ host port user pass vhost /
     );
@@ -103,6 +108,7 @@ sub tail {
         my $ft = $self->setup_tail($fn, $rk, $self->_ch);
         $ft->tail;
     }
+    return $cv;
 }
 
 sub setup_tail {
