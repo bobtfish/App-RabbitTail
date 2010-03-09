@@ -1,6 +1,6 @@
 package App::RabbitTail;
 use Moose;
-use RabbitFoot;
+use Net::RabbitFoot;
 use App::RabbitTail::FileTailer;
 use AnyEvent;
 use Data::Dumper;
@@ -37,7 +37,7 @@ has max_sleep => (
 );
 
 has _rf => (
-    isa => 'RabbitFoot',
+    isa => 'Net::RabbitFoot',
     is => 'ro',
     lazy => 1,
     builder => '_build_rf',
@@ -45,10 +45,10 @@ has _rf => (
 
 sub _build_rf {
     my ($self) = @_;
-    RabbitFoot->new(
+    Net::RabbitFoot->new(
         varbose => 1,
     )->load_xml_spec(
-        RabbitFoot::default_amqp_spec(),
+        Net::RabbitFoot::default_amqp_spec(),
     )->connect(
         an_failure => sub { warn("BLARGH") },
         on_close => sub { warn("CLOSED") },
@@ -168,7 +168,7 @@ App::RabbitTail - Log tailer which broadcasts log lines into RabbitMQ exchanges.
 
 App::RabbitTail is a trivial file tail implementation using L<AnyEvent> IO watchers,
 which emits lines from the tailed files into L<http://www.rabbitmq.com/>
-via the L<RabbitFoot> client.
+via the L<Net::RabbitFoot> client.
 
 Note that this software should be considered experimental.
 
