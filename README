@@ -32,7 +32,7 @@ SYNOPSIS
 DECRIPTION
     App::RabbitTail is a trivial file tail implementation using AnyEvent IO
     watchers, which emits lines from the tailed files into
-    <http://www.rabbitmq.com/> via the RabbitFoot client.
+    <http://www.rabbitmq.com/> via the Net::RabbitFoot client.
 
     Note that this software should be considered experimental.
 
