@@ -95,4 +95,37 @@ sub _read_one_line {
 }
 
 __PACKAGE__->meta->make_immutable;
+__END__
 
+=head1 NAME
+
+App::RabbitTail::FileTailer - responsible for tailing a file and invoking a callback for each line.
+
+=head1 SYNOPSIS
+
+    use App::RabbitTail::FileTailer;
+    use AnyEvent;
+
+    my $tailer = App::RabbitTail::FileTailer->new(
+        backoff_increment => 0.1,
+        max_sleep => 10,
+        fn => $somefile,
+        cd => sub { warn("Got line " . $_[0]) },
+    );
+    $tailer->tail; # Sets up watcher to fire callbacks, returns
+
+    # Rest of your code.
+
+    # Enter event loop.
+    AnyEvent->condvar->recv;
+
+=head1 DESCRIPTION
+
+An instance of App::RabbitTail::FileTailer manages tailing a file with exponential backoff
+of checking if the file has been written when no bytes are available to minimise system load.
+
+=head1 AUTHOR, COPYRIGHT AND LICENSE
+
+See L<App::RabbitTail> for copyright and license.
+
+=cut

@@ -1,3 +1,6 @@
+MANIFEST.bak
+MANIFEST
+App-RabbitTail-*
 Makefile
 META.yml
 inc

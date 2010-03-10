@@ -1,6 +1,6 @@
 package App::RabbitTail;
 use Moose;
-use RabbitFoot;
+use Net::RabbitFoot;
 use App::RabbitTail::FileTailer;
 use AnyEvent;
 use Data::Dumper;
@@ -37,7 +37,7 @@ has max_sleep => (
 );
 
 has _rf => (
-    isa => 'RabbitFoot',
+    isa => 'Net::RabbitFoot',
     is => 'ro',
     lazy => 1,
     builder => '_build_rf',
@@ -45,9 +45,14 @@ has _rf => (
 
 sub _build_rf {
     my ($self) = @_;
-    RabbitFoot->new()->load_xml_spec(
-        RabbitFoot::default_amqp_spec(),
+    Net::RabbitFoot->new(
+        varbose => 1,
+    )->load_xml_spec(
+        Net::RabbitFoot::default_amqp_spec(),
     )->connect(
+        an_failure => sub { warn("BLARGH") },
+        on_close => sub { warn("CLOSED") },
+        on_read_failure => sub { warn("READ FAILED") },
         map { $_ => $self->$_ }
         qw/ host port user pass vhost /
     );
@@ -89,6 +94,12 @@ sub _build_ch {
 
 sub run {
     my $self = shift;
+    $self->tail->recv;
+}
+
+sub tail {
+    my $self = shift;
+    my $cv = AnyEvent->condvar;
     my $rkeys = $self->routing_key;
     foreach my $fn ($self->filename->flatten) {
         my $rk = $rkeys->shift;
@@ -97,7 +108,7 @@ sub run {
         my $ft = $self->setup_tail($fn, $rk, $self->_ch);
         $ft->tail;
     }
-    AnyEvent->condvar->recv;
+    return $cv;
 }
 
 sub setup_tail {
@@ -123,7 +134,60 @@ __END__
 
 =head1 NAME
 
-App::RabbitTail
+App::RabbitTail - Log tailer which broadcasts log lines into RabbitMQ exchanges.
+
+=head1 SYNOPSIS
+
+    See the rabbit_tail script shipped with the distribution for simple CLI useage.
+
+    use App::RabbitTail;
+    use AnyEvent; # Not strictly needed, but you probably want to
+                  # use it yourself if you're doing this manually.
+
+    my $tailer = App::RabbitTail->new(
+        # At least 1 filename must be supplied
+        filename => [qw/ file1 file2 /],
+        # Optional args, defaults below
+        routing_key => [qw/ # /],
+        host => 'localhost',
+        port => 5672,
+        user => 'guest',
+        pass => 'guest',
+        vhost => '/',
+        exchange_type => 'direct',
+        exchange_name => 'logs',
+        exchange_durable => 0,
+        max_sleep => 10,
+    );
+    # You can setup other AnyEvent io watchers etc here.
+    $tailer->run; # enters the event loop
+    # Or:
+    my $condvar = $tailer->tail;
+
+=head1 DECRIPTION
+
+App::RabbitTail is a trivial file tail implementation using L<AnyEvent> IO watchers,
+which emits lines from the tailed files into L<http://www.rabbitmq.com/>
+via the L<Net::RabbitFoot> client.
+
+Note that this software should be considered experimental.
+
+=head1 BUGS
+
+Plenty. Along with error conditions not being handled gracefully etc.
+
+They will be fixed in due course as I start using this more seriously,
+however in the meantime, patches are welcome :)
+
+=head1 AUTHOR
+
+Tomas Doran (t0m) C<< <bobtfish@bobtfish.net> >>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2010 Tomas Doran
+
+Licensed under the same terms as perl itself.
 
 =cut
 
