@@ -8,7 +8,7 @@ use Moose::Autobox;
 use MooseX::Types::Moose qw/ArrayRef Str Int/;
 use namespace::autoclean;
 
-our $VERSION = '0.000_01';
+our $VERSION = '0.000_02';
 $VERSION = eval $VERSION;
 
 with 'MooseX::Getopt';
