@@ -6,6 +6,7 @@ use AnyEvent;
 use Data::Dumper;
 use Moose::Autobox;
 use MooseX::Types::Moose qw/ArrayRef Str Int/;
+use Try::Tiny qw/ try catch /;
 use namespace::autoclean;
 
 our $VERSION = '0.000_02';
@@ -36,26 +37,40 @@ has max_sleep => (
     documentation => 'The max sleep time between trying to read a line from an input file',
 );
 
+my $rf = Net::RabbitFoot->new(
+    varbose => 1,
+)->load_xml_spec(
+    Net::RabbitFoot::default_amqp_spec(),
+);
+
 has _rf => (
     isa => 'Net::RabbitFoot',
     is => 'ro',
     lazy => 1,
     builder => '_build_rf',
+    clearer => '_clear_rf',
 );
 
 sub _build_rf {
     my ($self) = @_;
-    Net::RabbitFoot->new(
-        varbose => 1,
-    )->load_xml_spec(
-        Net::RabbitFoot::default_amqp_spec(),
-    )->connect(
-        an_failure => sub { warn("BLARGH") },
-        on_close => sub { warn("CLOSED") },
-        on_read_failure => sub { warn("READ FAILED") },
-        map { $_ => $self->$_ }
-        qw/ host port user pass vhost /
-    );
+    my $rf_conn;
+    while (!$rf_conn) {
+        try {
+            $rf_conn = $rf->connect(
+                on_close => sub {
+                    $self->_clear_ch;
+                    $self->_clear_rf;
+                },
+                map { $_ => $self->$_ }
+                qw/ host port user pass vhost /
+            );
+        }
+        catch {
+            warn($_);
+            sleep 2;
+        };
+    }
+    return $rf_conn;
 }
 
 my %defaults = (
@@ -77,6 +92,7 @@ has _ch => (
     is => 'ro',
     lazy => 1,
     builder => '_build_ch',
+    clearer => '_clear_ch',
 );
 
 sub _build_ch {

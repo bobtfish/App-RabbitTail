@@ -13,6 +13,7 @@ requires 'Net::RabbitFoot' => '1.00';
 requires 'AnyEvent';
 requires 'MooseX::Types::Path::Class';
 requires 'MooseX::Types';
+requires 'Try::Tiny';
 
 test_requires 'Test::More' => '0.88';
 
