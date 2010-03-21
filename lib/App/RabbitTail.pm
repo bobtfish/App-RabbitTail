@@ -9,7 +9,7 @@ use MooseX::Types::Moose qw/ArrayRef Str Int/;
 use Try::Tiny qw/ try catch /;
 use namespace::autoclean;
 
-our $VERSION = '0.000_03';
+our $VERSION = '0.001';
 $VERSION = eval $VERSION;
 
 with 'MooseX::Getopt';
