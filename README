@@ -27,7 +27,7 @@ SYNOPSIS
         # You can setup other AnyEvent io watchers etc here.
         $tailer->run; # enters the event loop
         # Or:
-        my $condvar = $tailer->tail;
+        $tailer->tail;
 
 DECRIPTION
     App::RabbitTail is a trivial file tail implementation using AnyEvent IO

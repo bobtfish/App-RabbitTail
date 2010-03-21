@@ -9,7 +9,7 @@ use MooseX::Types::Moose qw/ArrayRef Str Int/;
 use Try::Tiny qw/ try catch /;
 use namespace::autoclean;
 
-our $VERSION = '0.000_02';
+our $VERSION = '0.000_03';
 $VERSION = eval $VERSION;
 
 with 'MooseX::Getopt';
@@ -37,6 +37,13 @@ has max_sleep => (
     documentation => 'The max sleep time between trying to read a line from an input file',
 );
 
+has _cv => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { AnyEvent->condvar },
+    clearer => '_clear_cv',
+);
+
 my $rf = Net::RabbitFoot->new(
     varbose => 1,
 )->load_xml_spec(
@@ -58,8 +65,10 @@ sub _build_rf {
         try {
             $rf_conn = $rf->connect(
                 on_close => sub {
+                    warn(sprintf("RabbitMQ connection to %s:%s closed!\n", $self->host, $self->port));
                     $self->_clear_ch;
                     $self->_clear_rf;
+                    $self->_cv->send("ARGH");
                 },
                 map { $_ => $self->$_ }
                 qw/ host port user pass vhost /
@@ -93,6 +102,7 @@ has _ch => (
     lazy => 1,
     builder => '_build_ch',
     clearer => '_clear_ch',
+    predicate => '_has_ch',
 );
 
 sub _build_ch {
@@ -110,32 +120,41 @@ sub _build_ch {
 
 sub run {
     my $self = shift;
-    $self->tail->recv;
+    my $tail_started = 0;
+    while (1) {
+        $self->_clear_cv;
+        $self->_ch; # Build channel before going into the event loop
+        $self->tail # Setup all the timers
+            unless $tail_started++;
+        $self->_cv->recv; # Enter event loop. We will leave here if channel dies..
+    }
 }
 
 sub tail {
     my $self = shift;
-    my $cv = AnyEvent->condvar;
     my $rkeys = $self->routing_key;
     foreach my $fn ($self->filename->flatten) {
         my $rk = $rkeys->shift;
         $rkeys->unshift($rk) unless $rkeys->length;
-       # warn("Setup tail for $fn on $rk");
-        my $ft = $self->setup_tail($fn, $rk, $self->_ch);
+#        warn("Setup tail for $fn on $rk");
+        my $ft = $self->setup_tail($fn, $rk);
         $ft->tail;
     }
-    return $cv;
 }
 
 sub setup_tail {
-    my ($self, $file, $routing_key, $ch) = @_;
+    my ($self, $file, $routing_key) = @_;
     App::RabbitTail::FileTailer->new(
         max_sleep => $self->max_sleep,
         cb => sub {
             my $message = shift;
             chomp($message);
 #            warn("SENT $message to " . $self->exchange_name . " with " . $routing_key);
-            $ch->publish(
+            if (!$self->_has_ch) {
+                warn("DROPPED $message to " . $self->exchange_name . " with " . $routing_key . "\n");
+                return;
+            }
+            $self->_ch->publish(
                 body => $message,
                 exchange => $self->exchange_name,
                 routing_key => $routing_key,
@@ -178,7 +197,7 @@ App::RabbitTail - Log tailer which broadcasts log lines into RabbitMQ exchanges.
     # You can setup other AnyEvent io watchers etc here.
     $tailer->run; # enters the event loop
     # Or:
-    my $condvar = $tailer->tail;
+    $tailer->tail;
 
 =head1 DECRIPTION
 
