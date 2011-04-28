@@ -20,6 +20,8 @@ test_requires 'Test::More' => '0.88';
 
 install_script 'script/rabbit_tail';
 
+resources repository => 'git://github.com/bobtfish/App-RabbitTail.git';
+
 if ($Module::Install::AUTHOR) {
     system("pod2text lib/App/RabbitTail.pm > README")
         and die $!;
