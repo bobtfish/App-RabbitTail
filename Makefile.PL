@@ -15,6 +15,7 @@ requires 'AnyEvent';
 requires 'MooseX::Types::Path::Class';
 requires 'MooseX::Types';
 requires 'Try::Tiny';
+requires 'Moose::Autobox';
 
 test_requires 'Test::More' => '0.88';
 
