@@ -9,8 +9,8 @@ all_from 'lib/App/RabbitTail.pm';
 
 requires 'Moose';
 requires 'namespace::autoclean';
-requires 'Net::RabbitFoot' => '1.00';
-requires 'AnyEvent::RabbitMQ' => '1.01';
+requires 'Net::RabbitFoot' => '1.03';
+requires 'AnyEvent::RabbitMQ' => '1.03';
 requires 'AnyEvent';
 requires 'MooseX::Types::Path::Class';
 requires 'MooseX::Types';
